@@ -1,6 +1,6 @@
 class Sign {
-  static X = "x";
-  static O = "o";
+  static X = "X";
+  static O = "O";
 }
 
 class Tile {
@@ -50,30 +50,110 @@ class Player {
 
 class GameBoard {
   constructor() {
-    this.gameBoard = [];
+    this.gameBoard = [
+      [, ,],
+      [, ,],
+      [, ,],
+    ];
   }
 
   inizializeGameBoard() {
-    for (let i = 0; i < 9; i++) {
+    /* for (let i = 0; i < 9; i++) {
       this.gameBoard.push(new Tile());
+    } */
+    for (let i = 0; i < this.gameBoard.length; i++) {
+      for (let j = 0; j < this.gameBoard.length; j++) {
+        this.gameBoard[i][j] = new Tile();
+      }
     }
+
+    Tile.counter = 0;
   }
 
   getTile(coordinateNumber) {
-    return this.gameBoard.find(
+    for (let i = 0; i < this.gameBoard.length; i++) {
+      for (let j = 0; j < this.gameBoard.length; j++) {
+        if (this.gameBoard[i][j].getCoordinateNumber() == coordinateNumber) {
+          return this.gameBoard[i][j];
+        }
+      }
+    }
+    /* return this.gameBoard.find(
       (tile) => tile.getCoordinateNumber() == coordinateNumber
-    );
+    ); */
   }
 
   displayTiles() {
-    for (let tile of this.gameBoard) {
-      console.log(tile.getSignValue() + ": " + tile.getCoordinateNumber());
+    for (let tileArray of this.gameBoard) {
+      for (let i = 0; i < this.gameBoard.length; i++) {
+        console.log(
+          tileArray[i].getSignValue() +
+            ": " +
+            tileArray[i].getCoordinateNumber()
+        );
+      }
     }
+  }
+
+  isFull() {
+    for (let i = 0; i < this.gameBoard.length; i++) {
+      for (let j = 0; j < this.gameBoard.length; j++) {
+        if (this.gameBoard[i][j] == "") return false;
+      }
+    }
+    return true;
+  }
+
+  checkColumns(sign) {
+    for (let i = 0; i < this.gameBoard.length; i++) {
+      let count = 0;
+      for (let j = 0; j < this.gameBoard[i].length; j++) {
+        if (this.gameBoard[j][i].getSignValue() == sign) count++;
+      }
+
+      if (count === 3) return true;
+    }
+
+    return false;
+  }
+
+  checkRows(sign) {
+    for (let i = 0; i < this.gameBoard.length; i++) {
+      let count = 0;
+      for (let j = 0; j < this.gameBoard[i].length; j++) {
+        if (this.gameBoard[i][j].getSignValue() == sign) count++;
+      }
+
+      if (count === 3) return true;
+    }
+    return false;
+  }
+
+  checkDiagonals(sign) {
+    for (let i = 0; i < this.gameBoard.length; i++) {
+      if (
+        (this.gameBoard[0][0].getSignValue() == sign &&
+          this.gameBoard[1][1].getSignValue() == sign &&
+          this.gameBoard[2][2].getSignValue() == sign) ||
+        (this.gameBoard[0][2].getSignValue() == sign &&
+          this.gameBoard[1][1].getSignValue() == sign &&
+          this.gameBoard[2][0].getSignValue() == sign)
+      )
+        return true;
+    }
+    return false;
   }
 }
 
 class UI {
-  static startGame() {} //add eventlistener on click to start the game (create board and players)
+  static startGame() {
+    const board = new GameBoard();
+    board.inizializeGameBoard();
+    const playerOne = new Player(Sign.X);
+    const playerTwo = new Player(Sign.O);
+
+    return { board, playerOne, playerTwo };
+  } //add eventlistener on click to start the game (create board and players)
 
   static checkTileContent(gameBoard, coordinateNumber) {
     return gameBoard.getTile(coordinateNumber).getSignValue();
@@ -102,22 +182,35 @@ class UI {
     const sign = document.createTextNode(player.getSign());
 
     tile.appendChild(sign);
-    board.displayTiles();
+    gameBoard.displayTiles();
   }
 
-  static checkForWinner(gameBoard) {}
+  static checkForWinner(gameBoard, sign) {
+    if (
+      gameBoard.checkColumns(sign) ||
+      gameBoard.checkRows(sign) ||
+      gameBoard.checkDiagonals(sign)
+    ) {
+      console.log("Winner is: " + sign);
+    } else if (gameBoard.isFull()) {
+      console.log("it's a draw");
+    }
+  }
 }
 
-const board = new GameBoard();
-board.inizializeGameBoard();
-const playerOne = new Player(Sign.X);
-const playerTwo = new Player(Sign.O);
-
-/* playerOne.isMyTurn = false; */
+const game = UI.startGame();
 
 const tiles = document.querySelector(".grid");
 tiles.addEventListener("click", (e) => {
-  if (UI.checkTileContent(board, e.target.dataset.coordinate)) return; //if not "" return;
-  UI.renderSign(e.target, UI.handleTurns(playerOne, playerTwo), board);
-  UI.checkForWinner(board);
+  if (UI.checkTileContent(game["board"], e.target.dataset.coordinate)) return; //if not "" return;
+  UI.renderSign(
+    e.target,
+    UI.handleTurns(game["playerOne"], game["playerTwo"]),
+    game["board"]
+  );
+
+  UI.handleTurns(game["playerOne"], game["playerTwo"]);
+  const sign = UI.handleTurns(game["playerOne"], game["playerTwo"]).getSign();
+
+  UI.checkForWinner(game["board"], sign);
 });
