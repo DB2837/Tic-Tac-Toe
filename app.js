@@ -27,6 +27,7 @@ class Tile {
 class Player {
   playerScore = 0;
   isMyTurn = true;
+  playerType = "";
 
   constructor(sign) {
     this.signValue = sign;
@@ -46,9 +47,19 @@ class Player {
   getSign() {
     return this.signValue;
   }
+
+  setType(type) {
+    this.playerType = type;
+  }
+
+  getType() {
+    return this.playerType;
+  }
 }
 
 class GameBoard {
+  static randomTile;
+
   constructor() {
     this.gameBoard = [
       [, ,],
@@ -58,9 +69,6 @@ class GameBoard {
   }
 
   inizializeGameBoard() {
-    /* for (let i = 0; i < 9; i++) {
-      this.gameBoard.push(new Tile());
-    } */
     for (let i = 0; i < this.gameBoard.length; i++) {
       for (let j = 0; j < this.gameBoard.length; j++) {
         this.gameBoard[i][j] = new Tile();
@@ -78,12 +86,9 @@ class GameBoard {
         }
       }
     }
-    /* return this.gameBoard.find(
-      (tile) => tile.getCoordinateNumber() == coordinateNumber
-    ); */
   }
 
-  displayTiles() {
+  /*   displayTiles() {
     for (let tileArray of this.gameBoard) {
       for (let i = 0; i < this.gameBoard.length; i++) {
         console.log(
@@ -94,11 +99,38 @@ class GameBoard {
       }
     }
   }
+ */
+  getRandomPossibleTiles() {
+    let possibleMoves = [];
+    for (let i = 0; i < this.gameBoard.length; i++) {
+      for (let j = 0; j < this.gameBoard.length; j++) {
+        if (this.gameBoard[i][j].getSignValue() == "") {
+          possibleMoves.push(this.gameBoard[i][j].getCoordinateNumber());
+        }
+      }
+    }
+
+    for (let num in possibleMoves) {
+    }
+
+    let randomIndex = Math.floor(Math.random() * possibleMoves.length);
+    GameBoard.randomTile = possibleMoves[randomIndex];
+  }
+
+  clearBoard() {
+    for (let i = 0; i < this.gameBoard.length; i++) {
+      for (let j = 0; j < this.gameBoard.length; j++) {
+        this.gameBoard[i][j].setSignValue("");
+      }
+    }
+
+    Tile.counter = 0;
+  }
 
   isFull() {
     for (let i = 0; i < this.gameBoard.length; i++) {
       for (let j = 0; j < this.gameBoard.length; j++) {
-        if (this.gameBoard[i][j] == "") return false;
+        if (this.gameBoard[i][j].getSignValue() == "") return false;
       }
     }
     return true;
@@ -146,14 +178,22 @@ class GameBoard {
 }
 
 class UI {
-  static startGame() {
+  static startGame(playerTipe) {
     const board = new GameBoard();
     board.inizializeGameBoard();
     const playerOne = new Player(Sign.X);
     const playerTwo = new Player(Sign.O);
 
+    playerOne.setType("human");
+
+    if (playerTipe == "human") {
+      playerTwo.setType("human");
+    } else if (playerTipe == "AI") {
+      playerTwo.setType("AI");
+    }
+
     return { board, playerOne, playerTwo };
-  } //add eventlistener on click to start the game (create board and players)
+  } //add eventlistener on click to start the game (create board and players, take players as parameter for CPU)
 
   static checkTileContent(gameBoard, coordinateNumber) {
     return gameBoard.getTile(coordinateNumber).getSignValue();
@@ -163,15 +203,21 @@ class UI {
     if (playerOne.isMyTurn == true) {
       playerOne.isMyTurn = false;
       playerTwo.isMyTurn = true;
-      return playerOne;
+      return [playerOne, playerOne.getSign()];
     } else if (playerOne.isMyTurn == false) {
       playerOne.isMyTurn = true;
       playerTwo.isMyTurn = false;
-      return playerTwo;
+      return [playerTwo, playerTwo.getSign()];
     }
   }
 
-  static renderSign(target, player, gameBoard) {
+  static playerInTurn(playerOne, playerTwo) {
+    if (playerOne.isMyTurn == true) return playerOne;
+
+    return playerTwo;
+  }
+
+  static renderSignPvP(target, player, gameBoard) {
     if (UI.checkTileContent(gameBoard, target.dataset.coordinate)) return;
 
     const tile = document.querySelector(
@@ -182,35 +228,172 @@ class UI {
     const sign = document.createTextNode(player.getSign());
 
     tile.appendChild(sign);
-    gameBoard.displayTiles();
   }
 
-  static checkForWinner(gameBoard, sign) {
-    if (
-      gameBoard.checkColumns(sign) ||
-      gameBoard.checkRows(sign) ||
-      gameBoard.checkDiagonals(sign)
-    ) {
-      console.log("Winner is: " + sign);
-    } else if (gameBoard.isFull()) {
-      console.log("it's a draw");
+  static renderSignPvE(target, player, gameBoard) {
+    if (player.getType() == "human") {
+      if (UI.checkTileContent(gameBoard, target.dataset.coordinate)) return;
+      const tile = document.querySelector(
+        `[data-coordinate="${target.dataset.coordinate}"]`
+      );
+      player.drawSign(target.dataset.coordinate, gameBoard);
+
+      const sign = document.createTextNode(player.getSign());
+
+      tile.appendChild(sign);
+      if (game["board"].isFull()) return;
+    } else if (player.getType() == "AI") {
+      if (game["board"].isFull()) return;
+      const tile = document.querySelector(
+        `[data-coordinate="${GameBoard.randomTile}"]`
+      );
+
+      setTimeout(() => {
+        player.drawSign(GameBoard.randomTile, gameBoard);
+
+        const sign = document.createTextNode(player.getSign());
+
+        tile.appendChild(sign);
+        UI.checkForWinner(game["board"], player);
+      }, 900);
     }
+  }
+
+  static clearBoard() {
+    const tiles = document.querySelectorAll("[data-coordinate]");
+    tiles.forEach((tile) => (tile.textContent = ""));
+  }
+
+  static renderPlayerScore(player) {
+    if (player.getSign() == Sign.X) {
+      scorePlayerOne.textContent = player.playerScore;
+      return;
+    }
+
+    scorePlayerTwo.textContent = player.playerScore;
+  }
+
+  static highlightCurrentPlayer(player) {
+    if (player.getSign() == Sign.X) {
+      textPlayerTwo.classList.toggle("active");
+      scorePlayerTwo.classList.toggle("active");
+      textPlayerOne.classList.remove("active");
+      scorePlayerOne.classList.remove("active");
+      return;
+    }
+
+    textPlayerOne.classList.toggle("active");
+    scorePlayerOne.classList.toggle("active");
+    textPlayerTwo.classList.remove("active");
+    scorePlayerTwo.classList.remove("active");
+  }
+
+  static handlePvPGame(target, game) {
+    const currentPlayer = UI.playerInTurn(game["playerOne"], game["playerTwo"]);
+
+    UI.renderSignPvP(
+      target,
+      UI.handleTurns(game["playerOne"], game["playerTwo"])[0],
+      game["board"]
+    );
+
+    UI.checkForWinner(game["board"], currentPlayer);
+    UI.highlightCurrentPlayer(currentPlayer);
+  }
+
+  static handlePvEGame(target, game) {
+    const currentPlayer = UI.playerInTurn(game["playerOne"], game["playerTwo"]);
+
+    UI.renderSignPvE(
+      target,
+      UI.handleTurns(game["playerOne"], game["playerTwo"])[0],
+      game["board"]
+    );
+
+    UI.checkForWinner(game["board"], currentPlayer);
+  }
+
+  static checkForWinner(gameBoard, player) {
+    if (
+      gameBoard.checkColumns(player.getSign()) ||
+      gameBoard.checkRows(player.getSign()) ||
+      gameBoard.checkDiagonals(player.getSign())
+    ) {
+      player.playerScore++;
+      UI.renderPlayerScore(player);
+      tiles.classList.add("not-clickable");
+
+      setTimeout(() => {
+        tiles.classList.remove("not-clickable");
+        gameBoard.clearBoard();
+        UI.clearBoard();
+      }, 900);
+    } else if (gameBoard.isFull()) {
+      setTimeout(() => {
+        gameBoard.clearBoard();
+        UI.clearBoard();
+      }, 900);
+    } else return;
   }
 }
 
-const game = UI.startGame();
+const scorePlayerOne = document.querySelector("#scoreOne");
+const scorePlayerTwo = document.querySelector("#scoreTwo");
+const textPlayerOne = document.querySelector("#playerOne");
+const textPlayerTwo = document.querySelector("#playerTwo");
+const overlay = document.querySelector(".overlay");
+const neonButtons = document.querySelectorAll(".neon-btn");
+const pvpButton = document.querySelector(".pvp");
+const pveButton = document.querySelector(".pve");
+const bottomBtn = document.querySelector(".btn-bottom");
+const dropdownMenu = document.querySelector(".dropdown-content");
 
+const grid = document.querySelector(".grid");
 const tiles = document.querySelector(".grid");
+let game;
+
 tiles.addEventListener("click", (e) => {
-  if (UI.checkTileContent(game["board"], e.target.dataset.coordinate)) return; //if not "" return;
-  UI.renderSign(
-    e.target,
-    UI.handleTurns(game["playerOne"], game["playerTwo"]),
-    game["board"]
-  );
+  game["board"].getRandomPossibleTiles();
 
-  UI.handleTurns(game["playerOne"], game["playerTwo"]);
-  const sign = UI.handleTurns(game["playerOne"], game["playerTwo"]).getSign();
+  if (game["playerTwo"].getType() == "human") {
+    if (UI.checkTileContent(game["board"], e.target.dataset.coordinate)) return;
+    UI.handlePvPGame(e.target, game);
+  } else if (game["playerTwo"].getType() == "AI") {
+    if (game["playerOne"].isMyTurn) {
+      if (UI.checkTileContent(game["board"], e.target.dataset.coordinate))
+        return;
+      UI.handlePvEGame(e.target, game);
+    } else if (game["playerTwo"].isMyTurn) {
+      UI.handlePvEGame(GameBoard.randomTile, game);
+    }
 
-  UI.checkForWinner(game["board"], sign);
+    tiles.click();
+  }
+});
+
+pvpButton.addEventListener("click", () => {
+  overlay.classList.toggle("displayNone");
+  pveButton.classList.toggle("displayNone");
+  pvpButton.classList.toggle("displayNone");
+  game = UI.startGame("human");
+  textPlayerOne.classList.add("active");
+  scorePlayerOne.classList.add("active");
+});
+
+bottomBtn.addEventListener("click", () => {
+  overlay.classList.toggle("displayNone");
+  pveButton.classList.toggle("displayNone");
+  pvpButton.classList.toggle("displayNone");
+  game["board"].clearBoard();
+  UI.clearBoard();
+  game = UI.startGame();
+  scorePlayerOne.textContent = 0;
+  scorePlayerTwo.textContent = 0;
+});
+
+pveButton.addEventListener("click", () => {
+  game = UI.startGame("AI");
+  overlay.classList.toggle("displayNone");
+  pveButton.classList.toggle("displayNone");
+  pvpButton.classList.toggle("displayNone");
 });
