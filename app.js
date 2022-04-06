@@ -243,8 +243,8 @@ class UI {
       tile.appendChild(sign);
       if (game["board"].isFull()) return;
     } else if (player.getType() == "AI") {
-      tiles.classList.add("not-clickable");
       if (game["board"].isFull()) return;
+      tiles.classList.add("not-clickable");
       const tile = document.querySelector(
         `[data-coordinate="${GameBoard.randomTile}"]`
       );
