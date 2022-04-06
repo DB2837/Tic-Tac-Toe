@@ -243,6 +243,7 @@ class UI {
       tile.appendChild(sign);
       if (game["board"].isFull()) return;
     } else if (player.getType() == "AI") {
+      tiles.classList.add("not-clickable");
       if (game["board"].isFull()) return;
       const tile = document.querySelector(
         `[data-coordinate="${GameBoard.randomTile}"]`
@@ -255,6 +256,7 @@ class UI {
 
         tile.appendChild(sign);
         UI.checkForWinner(game["board"], player);
+        tiles.classList.remove("not-clickable");
       }, 900);
     }
   }
